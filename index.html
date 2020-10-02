@@ -1,0 +1,321 @@
+<html>
+<head>
+    <script src="https://rawgit.com/iscoe/substrate/master/substrate.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/97/three.min.js"></script>
+    <script src="https://rawgit.com/mrdoob/three.js/master/examples/js/objects/Lensflare.js"></script>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="liveearth"></div>
+
+    <script>
+
+        const RES = 32;
+
+        class EarthLayer extends window.substrate.Layer {
+
+            constructor(opts) {
+                super(opts);
+                this.loader = new THREE.TextureLoader();
+            }
+
+            requestInit(scene) {
+
+                let earth = new THREE.Mesh(
+                new THREE.SphereGeometry(4, RES, RES),
+                new THREE.MeshStandardMaterial({
+                    map: this.loader.load("./earthmap.jpg"),
+                    "roughness": 1,
+                    "metalness": 0,
+                })
+                );
+
+                let lights = new THREE.Mesh(
+                new THREE.SphereGeometry(4.01, RES, RES),
+                new THREE.MeshStandardMaterial({
+                    alphaMap: this.loader.load("./earthlights.png"),
+                    emissiveMap: this.loader.load("./earthlights.png"),
+                    // lightMap: this.loader.load("./earthlights.png"),
+                    transparent: true,
+                    roughness: 0.5,
+                    "metalness": 0.5,
+                    "emissive": 12566463,
+                    "color": 16777215,
+                    alphaTest: 0.3,
+                })
+                );
+
+
+                let clouds = new THREE.Mesh(
+                new THREE.SphereGeometry(4.02, RES, RES),
+                new THREE.MeshStandardMaterial({
+                    "color": 16777215,
+                    "roughness": 0.42,
+                    "metalness": 0,
+                    "emissive": 0,
+                    "alphaMap": this.loader.load(`./earthclouds-Jan-28-2018.jpg?${new Date()}`),
+                    "transparent": true,
+                    "depthFunc": 3,
+                    "depthTest": true,
+                    "depthWrite": true
+                })
+                );
+
+                this.children.push(earth);
+                this.earth = earth;
+                this.children.push(lights);
+                this.lights = lights;
+                this.children.push(clouds);
+                this.clouds = clouds;
+
+                scene.add(earth);
+                scene.add(lights);
+                scene.add(clouds);
+
+                var ring = new THREE.Mesh(
+                    new THREE.RingGeometry(80, 80.05, 64),
+                    new THREE.MeshBasicMaterial({ color: 0xff00ff, side: THREE.DoubleSide })
+                );
+                ring.rotation.set(Math.PI / 2, 0, 0);
+                ring.position.set(-80, 0, 0);
+                scene.add(ring);
+            }
+
+            requestRender(scene) {
+                let midnight = new Date();
+                midnight.setUTCHours(0, 0, 0, 0);
+                let radiansSinceMidnight = (
+                    (new Date() - midnight) /
+                    (1000 * 60 * 60 * 24)
+                ) * (Math.PI * 2);
+
+                this.earth.rotation.set(0, radiansSinceMidnight, 0);
+                this.lights.rotation.set(0, radiansSinceMidnight, 0);
+                this.clouds.rotation.set(0, radiansSinceMidnight, 0);
+            }
+        }
+
+        let issLayer = new window.substrate.layers.MeshLayer({
+            path: "iss.obj",
+            origin: {x: 0, y: 0, z: 6}
+        });
+
+        class SunLayer extends window.substrate.Layer {
+            constructor(opts) {
+                super(opts);
+                this.loader = new THREE.TextureLoader();
+            }
+
+            requestInit() {
+                let sunLight = new THREE.DirectionalLight(0xffffff, 2);
+                let sun = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.2, 8, 8),
+                    new THREE.MeshBasicMaterial({ color: 0xffee00 })
+                );
+
+                var lensflare = new THREE.Lensflare();
+
+                var textureFlare0 = this.loader.load("lensflare0.png");
+                var textureFlare2 = this.loader.load("lensflare3.png");
+                lensflare.addElement(new THREE.LensflareElement(textureFlare0, 512, 0));
+                lensflare.addElement(new THREE.LensflareElement(textureFlare2, 512, 0.1));
+                lensflare.addElement(new THREE.LensflareElement(textureFlare2, 512, 4));
+                lensflare.addElement(new THREE.LensflareElement(textureFlare2, 100, 0.2));
+                lensflare.addElement(new THREE.LensflareElement(textureFlare2, 85, 0.4));
+                lensflare.addElement(new THREE.LensflareElement(textureFlare2, 60, 0.6));
+
+                sunLight.add(lensflare);
+
+
+                sun.position.set(-80, 0, 0);
+                sunLight.position.set(-80, 0, 0);
+                scene.add(sun);
+                scene.add(sunLight);
+            }
+        }
+
+
+        class SkyboxLayer extends window.substrate.Layer {
+            constructor(opts) {
+                super(opts);
+                this.loader = new THREE.TextureLoader();
+            }
+
+            requestInit() {
+                let skybox = new THREE.Mesh(
+                    new THREE.SphereGeometry(80, RES, RES),
+                    new THREE.MeshBasicMaterial({
+                        "color": 16777215,
+                        "roughness": 0.42,
+                        "metalness": 0,
+                        "emissive": 0,
+                        "alphaMap": this.loader.load(`./milkyway-skybox.jpg`),
+                        "transparent": true,
+                        "depthFunc": 3,
+                        "depthTest": true,
+                        "depthWrite": true,
+                        side: THREE.BackSide
+                    })
+                );
+                scene.add(skybox);
+            }
+        }
+
+        class MoonLayer extends window.substrate.Layer {
+            constructor(opts) {
+                super(opts);
+                this.loader = new THREE.TextureLoader();
+            }
+
+            requestInit() {
+                let skybox = new THREE.Mesh(
+                    new THREE.SphereGeometry(1, RES, RES),
+                    new THREE.MeshStandardMaterial({
+                        // "color": 16777215,
+                        "roughness": 0.85,
+                        // "metalness": 0,
+                        // "emissive": 0,
+                        // "emissive": this.loader.load(`./moon.png`),
+                        "map": this.loader.load(`./moon.png`),
+                        // "transparent": true,
+                        "depthFunc": 3,
+                        "depthTest": true,
+                        "depthWrite": true,
+                        // side: THREE.BackSide
+                    })
+                );
+                skybox.position.set(0, 0, 10);
+                scene.add(skybox);
+
+                var ring = new THREE.Mesh(
+                    new THREE.RingGeometry(10, 10.05, 64),
+                    new THREE.MeshBasicMaterial({ color: 0xffff00, side: THREE.DoubleSide })
+                );
+                ring.rotation.set(Math.PI/2, 0, (.1));
+                scene.add(ring);
+            }
+        }
+
+
+
+        class ISSLayer extends substrate.Layer {
+            /*
+            A layer that renders a mesh to the scene.
+            */
+            constructor(props) {
+                super(props);
+                this.path = props.path;
+                this.opacity = props.opacity;
+                this.origin = props.origin || new THREE.Vector3(0, 0, 0);
+                this.scale = props.scale || new THREE.Vector3(1, 1, 1);
+
+                if (!props.material) {
+                    if (props.opacity) {
+                        this._material = new THREE.MeshNormalMaterial({
+                            opacity: props.opacity,
+                            side: THREE.DoubleSide,
+                            transparent: true
+                        });
+                    } else {
+                        this._material = new THREE.MeshNormalMaterial({
+                            side: THREE.DoubleSide,
+                        });
+                    }
+                } else {
+                    this._material = props.material;
+                }
+            }
+
+            requestInit(scene) {
+                let self = this;
+
+                let object;
+                function loadModel() {
+                    object = object.children[0];
+                    object.position.set(
+                        self.origin.x, self.origin.y, self.origin.z
+                    );
+                    object.material = new THREE.MeshNormalMaterial({
+                        side: THREE.DoubleSide,
+                    });
+                    scene.add(object);
+
+                    self.issMesh = object;
+                }
+
+                var manager = new THREE.LoadingManager(loadModel);
+                var loader = new window.substrate.loaders.OBJLoader.OBJLoader(manager);
+                loader.load(self.path, function (obj) {
+                    object = obj;
+                });
+
+
+                window.setInterval(() => {
+                    if (!self.issMesh) { return }
+                    fetch("https://api.wheretheiss.at/v1/satellites/25544").then(res => res.json()).then(r => {
+                        let coords = new THREE.Spherical(
+                            4 + (r.altitude / 400),
+                            r.longitude * 3.14 / 180,
+                            90 + r.latitude * 3.14 / 180,
+                        );
+                        self.goalPosition = new THREE.Vector3().setFromSpherical(coords);
+                        self.lastUpdate = new Date() * 1;
+                    })
+                }, 1500)
+            }
+
+            requestRender(scene) {
+                let self = this;
+                if (!self.goalPosition) { return; }
+                let pos = self.issMesh.position.lerp(
+                    self.goalPosition,
+                    (new Date() * 1 - self.lastUpdate) / (3000 * 10)
+                );
+                self.issMesh.position.set(
+                    pos.x, pos.y, pos.z
+                );
+
+            }
+
+        }
+
+
+
+        V = new window.substrate.Visualizer({
+            targetElement: "liveearth",
+            renderLayers: {
+                iss: new ISSLayer({
+                // iss: new window.substrate.layers.MeshLayer({
+                    // data: `v 0 0 0
+                    // v 0 0 1
+                    // v 0 1 0
+                    // f 1 2 3
+                    // `,
+                    path: "iss.obj",
+                    origin: { x: 10, y: 0, z: 6 },
+                    scale: { x: 2, y: 2, z: 2}
+                }),
+                sun: new SunLayer(),
+                // teapot: new MeshLayer2({
+                // // teapot: new window.substrate.layers.MeshLayer({
+                //     path: "teapot.obj",
+                //     origin: { x: -10, y: 0, z: 0 }
+                // }),
+                // iss: issLayer,
+                skybox: new SkyboxLayer(),
+                skybox2: new SkyboxLayer(),
+                earth: new EarthLayer(),
+                moon: new MoonLayer(),
+            }
+        });
+
+        V.triggerRender();
+
+    </script>
+</body>
+</html>
